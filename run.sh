@@ -3,6 +3,16 @@
 USER=`whoami`
 ExeFile="$HOME/dmp"
 
+# Gitee下载链接
+GITEE_URL=$(curl -s https://gitee.com/api/v5/repos/s763483966/dst-management-platform-api/releases/latest | jq -r .assets[0].browser_download_url)
+
+# 原GitHub下载链接
+GITHUB_URL=$(curl -s "https://api.github.com/repos/miracleEverywhere/dst-management-platform-api/releases/latest" | jq -r .assets[0].browser_download_url)
+
+# 加速站点，失效从 https://github.akams.cn/ 重新搜索。
+PRIMARY_PROXY="https://ghproxy.cc/"     # 主加速站点
+SECONDARY_PROXY="https://ghproxy.cn/"   # 备用加速站点
+
 # 检查用户，只能使用root执行
 if [[ "${USER}" != "root" ]];then
     echo  -e "\e[31m请使用root用户执行此脚本 (Please run this script as the root user) \e[0m"
@@ -33,9 +43,48 @@ function check_glibc() {
     fi
 }
 
+# 下载函数:下载链接,尝试次数,超时时间(s)
+function download() {
+    local download_url="$1"
+    local tries="$2"
+    local timeout="$3"
+
+    wget -q --show-progress --tries="$tries" --timeout="$timeout" "$download_url"
+    return $?  # 返回 wget 的退出状态
+}
+
 # 安装主程序
 function install_dmp() {
-    wget https://dmp-1257278878.cos.ap-chengdu.myqcloud.com/dmp.tgz
+    # 尝试通过主加速站点下载 GitHub
+    echo -e "\e[32m尝试通过主加速站点下载 GitHub\e[0m"
+    if download "$PRIMARY_PROXY$GITHUB_URL" 5 10; then
+        echo -e "\e[32m通过主加速站点下载成功！\e[0m"
+    else
+        echo -e "\e[31m主加速站点下载失败: wget 返回码为 $?, 尝试备用加速站点下载 GitHub\e[0m"
+
+        # 尝试通过备用加速站点下载 GitHub
+        if download "$SECONDARY_PROXY$GITHUB_URL" 5 10; then
+            echo -e "\e[32m通过备用加速站点下载成功！\e[0m"
+        else
+            echo -e "\e[31m备用加速站点下载失败: wget 返回码为 $?, 尝试从 Gitee 下载\e[0m"
+
+            # 尝试从 Gitee 下载
+            if download "$GITEE_URL" 5 10; then
+                echo -e "\e[32m从 Gitee 下载成功！\e[0m"
+            else
+                echo -e "\e[31m从 Gitee 下载失败: wget 返回码为 $?, 尝试从原 GitHub 链接下载\e[0m"
+
+                # 尝试从原 GitHub 链接下载
+                if download "$GITHUB_URL" 5 10; then
+                    echo -e "\e[32m从原 GitHub 链接下载成功！\e[0m"
+                else
+                    echo -e "\e[31m从原 GitHub 链接下载失败: wget 返回码为 $?, 下载失败！\e[0m"
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+
     tar zxvf dmp.tgz
     rm -f dmp.tgz
     chmod +x $ExeFile
