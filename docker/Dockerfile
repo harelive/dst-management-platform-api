@@ -16,16 +16,16 @@ COPY . .
 
 RUN go build -o dmp main.go 
 
-# 设置时区为Asia/Shanghai
-RUN apt-get update && apt-get install -y tzdata && \
-    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone && \
-    rm -rf /var/lib/apt/lists/*  
+# # 设置时区为Asia/Shanghai
+# RUN apt-get update && apt-get install -y tzdata && \
+#     ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+#     echo "Asia/Shanghai" > /etc/timezone && \
+#     rm -rf /var/lib/apt/lists/*  
 
-# 复制时区设置文件，由于多阶段构建，直接复制可能出错，故单独复制
-RUN mkdir -p /app/etc
-RUN cp /etc/localtime /app/etc/localtime
-RUN cp /etc/timezone /app/etc/timezone
+# # 复制时区设置文件，由于多阶段构建，直接复制可能出错，故单独复制
+# RUN mkdir -p /app/etc
+# RUN cp /etc/localtime /app/etc/localtime
+# RUN cp /etc/timezone /app/etc/timezone
 
 
 # 第2阶段：运行时环境
@@ -37,13 +37,18 @@ WORKDIR /root
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
 COPY --from=build /app/config /root/config
-COPY --from=build /app/etc/localtime /etc/localtime
-COPY --from=build /app/etc/timezone /etc/timezone
- 
+# COPY --from=build /app/etc/localtime /etc/localtime
+# COPY --from=build /app/etc/timezone /etc/timezone
+
+ENV TZ=Asia/Shanghai
+RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
 RUN chmod -R +x /root/config/
 RUN mkdir /root/.klei
+
+ENV TZ="Asia/Shanghai"
 
 # web端口
 EXPOSE 80/tcp
