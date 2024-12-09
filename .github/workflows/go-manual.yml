@@ -1,16 +1,11 @@
-name: release-packages
+name: debug-packages
 
 on:
-  # push:
-  #   branches: [ "master" ]
-  #   tags: ["v*"]
-  # pull_request:
-  #   branches: [ "master" ]
   workflow_dispatch:
     inputs:
       tag:
         description: 'Choose a tag for the image'
-        required: false # 允许不选择标签
+        required: false
         default: 'dev'
         type: choice
         options:
@@ -40,10 +35,11 @@ jobs:
       id: tag-determination
       run: |
         tags="latest"
-        if [[ -n "${{ github.ref }}" && "${{ github.ref }}" == refs/heads/master ]]; then
-          tags="${{ github.ref#refs/heads/ }} $tags"
-        elif [[ -n "${{ github.ref }}" && "${{ github.ref }}" =~ refs/tags/v.* ]]; then
-          tags="${{ github.ref#refs/tags/ }} $tags"
+        ref=${{ github.ref }}
+        if [ "${ref}" == "refs/heads/master" ]; then
+          tags="master $tags"
+        elif [[ "${ref}" =~ ^refs\/tags\/v.*$ ]]; then
+          tags="${{ replace(ref, 'refs/tags/', '') }} $tags"
         elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
           tags="${{ github.event.inputs.tag }}"
         fi
