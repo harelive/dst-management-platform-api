@@ -39,7 +39,7 @@ jobs:
         if [ "${ref}" == "refs/heads/master" ]; then
           tags="master $tags"
         elif [[ "${ref}" =~ ^refs\/tags\/v.*$ ]]; then
-          tags="${{ replace(ref, 'refs/tags/', '') }} $tags"
+          echo "::set-output name=tag::$(echo "${ref}" | sed 's/refs\/tags\///')"
         elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
           tags="${{ github.event.inputs.tag }}"
         fi
@@ -51,5 +51,5 @@ jobs:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{ env.REGISTRY_SERVER_ADDRESS }}:${{ steps.tag-determination.outputs.tags }}
+        tags: ${{ env.REGISTRY_SERVER_ADDRESS }}:${{ steps.tag-determination.outputs.tags }} ${{ steps.tag-determination.outputs.tag == '' ? '' : env.REGISTRY_SERVER_ADDRESS}:${{ steps.tag-determination.outputs.tag }}
         labels: ${{ steps.meta.outputs.labels }}
