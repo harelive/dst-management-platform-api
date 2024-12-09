@@ -40,6 +40,7 @@ COPY --from=build /app/config /root/config
 # COPY --from=build /app/etc/localtime /etc/localtime
 # COPY --from=build /app/etc/timezone /etc/timezone
 
+RUN apt-get update && apt-get install -y tzdata
 ENV TZ=Asia/Shanghai
 RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -48,7 +49,7 @@ RUN chmod +x /root/entry-point.sh
 RUN chmod -R +x /root/config/
 RUN mkdir /root/.klei
 
-ENV TZ="Asia/Shanghai"
+
 
 # web端口
 EXPOSE 80/tcp
