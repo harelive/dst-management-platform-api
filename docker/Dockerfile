@@ -25,7 +25,6 @@ WORKDIR /root
 # 从构建阶段复制必要的文件
 COPY --from=build /app/dmp /root/dmp
 COPY --from=build /app/docker/entry-point.sh /root/entry-point.sh
-COPY --from=build /app/config /root/config
 
 # 成功设置时区，但镜像增大50M
 # RUN apt-get update && apt-get install -y tzdata
@@ -35,8 +34,9 @@ COPY --from=build /app/config /root/config
 RUN chmod +x /root/dmp
 RUN chmod +x /root/entry-point.sh
 RUN chmod -R +x /root/config/
-RUN mkdir /root/.klei
 
+RUN mkdir /root/config
+RUN mkdir /root/.klei
 
 
 # web端口
