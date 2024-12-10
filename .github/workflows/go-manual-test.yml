@@ -1,0 +1,84 @@
+name: debug-packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Choose a tag for the image (dev, latest, nightly, or leave empty)'
+        required: false
+        default: '' # 允许为空
+        type: choice
+        options:
+          - dev
+          - latest
+          - nightly
+          - '' # 允许选择空选项
+      version:
+        description: 'Specify a version number (e.g., v1.0.0)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  REGISTRY_SERVER_ADDRESS: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GitHub Package Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.PACKAGE_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Get Ref
+        id: get-ref
+        run: echo "::set-output name=ref::${{ github.ref }}"
+      - name: Determine Tags
+        id: determine-tags
+        run: |
+          tags=""
+          ref=$(echo ${{ github.ref }})
+          input_tag=$(echo ${{ github.event.inputs.tag }})
+          input_version=$(echo ${{ github.event.inputs.version }})
+
+          # 如果输入了版本号，则使用它作为基础
+          if [[ -n "$input_version" ]]; then
+            tags="$input_version"
+          fi
+
+          # 如果选择了标签，则添加它
+          if [[ -n "$input_tag" ]]; then
+            if [[ -z "$tags" ]]; then
+              tags="$input_tag"
+            else
+              tags="${tags},${input_tag}"
+            fi
+          fi
+
+          # 如果是tag提交，则添加tag名称
+          if [[ "$ref" =~ ^refs\/tags\/v.*$ ]]; then
+            tag_name=$(echo "$ref" | sed 's/refs\/tags\///')
+            tags="${tags},${tag_name}"
+          fi
+
+          # 如果tags仍然为空，则使用默认标签 "dev"  (可选)
+          if [[ -z "$tags" ]]; then
+            tags="dev"
+          fi
+          echo "::set-output name=tags::$tags"
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          file: ./docker/Dockerfile
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY_SERVER_ADDRESS }}:${{ steps.determine-tags.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
