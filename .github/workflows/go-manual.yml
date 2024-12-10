@@ -4,14 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Choose a tag for the image (dev, latest, nightly)'
+        description: 'Choose a tag for the image (dev, latest, nightly, or leave empty)'
         required: false
-        default: 'dev'
+        default: '' # 允许为空
         type: choice
         options:
           - dev
           - latest
           - nightly
+          - '' # 允许选择空选项
       version:
         description: 'Specify a version number (e.g., v1.0.0)'
         required: false
@@ -36,10 +37,10 @@ jobs:
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - name: Get Ref
+      - name: 获取 Ref
         id: get-ref
         run: echo "::set-output name=ref::${{ github.ref }}"
-      - name: Determine Tags
+      - name: 确定标签
         id: determine-tags
         run: |
           tags=""
@@ -47,13 +48,13 @@ jobs:
           input_tag=$(echo ${{ github.event.inputs.tag }})
           input_version=$(echo ${{ github.event.inputs.version }})
 
-          # 如果输入了版本号，则使用它作为基础
+          # 如果提供了版本号，则将其用作基础
           if [[ -n "$input_version" ]]; then
             tags="$input_version"
           fi
 
-          # 添加其他标签，即使版本号为空
-          if [[ "$input_tag" != "dev" && "$input_tag" != "" ]]; then
+          # 如果选择了标签，则添加它
+          if [[ -n "$input_tag" ]]; then
             if [[ -z "$tags" ]]; then
               tags="$input_tag"
             else
@@ -61,19 +62,18 @@ jobs:
             fi
           fi
 
-          # 如果是tag提交,则添加tag名称
+          # 如果是标签提交，则添加标签名称
           if [[ "$ref" =~ ^refs\/tags\/v.*$ ]]; then
             tag_name=$(echo "$ref" | sed 's/refs\/tags\///')
             tags="${tags},${tag_name}"
           fi
 
-          # 始终至少有一个标签
+          # 如果 tags 仍然为空，则使用默认标签 "dev" (可选)
           if [[ -z "$tags" ]]; then
             tags="dev"
           fi
-
           echo "::set-output name=tags::$tags"
-      - name: Build and push Docker image
+      - name: 构建并推送 Docker 镜像
         uses: docker/build-push-action@v3
         with:
           file: ./docker/Dockerfile
