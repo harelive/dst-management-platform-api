@@ -37,10 +37,10 @@ jobs:
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - name: 获取 Ref
+      - name: Get Ref
         id: get-ref
         run: echo "::set-output name=ref::${{ github.ref }}"
-      - name: 确定标签
+      - name: Determine Tags
         id: determine-tags
         run: |
           tags=""
@@ -48,7 +48,7 @@ jobs:
           input_tag=$(echo ${{ github.event.inputs.tag }})
           input_version=$(echo ${{ github.event.inputs.version }})
 
-          # 如果提供了版本号，则将其用作基础
+          # 如果输入了版本号，则使用它作为基础
           if [[ -n "$input_version" ]]; then
             tags="$input_version"
           fi
@@ -62,18 +62,18 @@ jobs:
             fi
           fi
 
-          # 如果是标签提交，则添加标签名称
+          # 如果是tag提交，则添加tag名称
           if [[ "$ref" =~ ^refs\/tags\/v.*$ ]]; then
             tag_name=$(echo "$ref" | sed 's/refs\/tags\///')
             tags="${tags},${tag_name}"
           fi
 
-          # 如果 tags 仍然为空，则使用默认标签 "dev" (可选)
+          # 如果tags仍然为空，则使用默认标签 "dev"  (可选)
           if [[ -z "$tags" ]]; then
             tags="dev"
           fi
           echo "::set-output name=tags::$tags"
-      - name: 构建并推送 Docker 镜像
+      - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           file: ./docker/Dockerfile
