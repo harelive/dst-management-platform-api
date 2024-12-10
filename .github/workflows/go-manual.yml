@@ -83,4 +83,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.REGISTRY_SERVER_ADDRESS }}:${{ steps.determine-tags.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
